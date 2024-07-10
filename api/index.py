@@ -1,21 +1,8 @@
-# from flask import Flask
-
-# app = Flask(__name__)
-
-# @app.route('/')
-# def home():
-#     return 'Hello, World!'
-
-# @app.route('/about')
-# def about():
-#     return 'About'
-
 import csv
-import os
 
 from flask import Flask, jsonify, render_template, request
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='../templates')  # Explicitly specify the template folder path if needed
 
 @app.route('/')
 def home():
