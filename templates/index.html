@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Map Click Coordinates</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f4f4f9;
+        }
+        header {
+            background: #333;
+            color: #fff;
+            padding: 8px 0;
+            text-align: center;
+        }
+        #map-container {
+            display: flex;
+            justify-content: center;
+            height: calc(100vh - 200px); /* Adjusted for smaller title */
+        }
+        #map {
+            height: 80%;
+            width: 80%;
+            border: 2px solid #0f0e0e;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        #controls {
+            text-align: center;
+            margin-top: 20px;
+        }
+        #download, #resolution, #box-size {
+            display: inline-block;
+            margin: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            color: #fff;
+            background: #333;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        #download:hover, #resolution:hover, #box-size:hover {
+            background: #555;
+        }
+        #credits {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1 style="font-size: 20px;">Latitude and Longitude Coordinates Saver</h1>
+    </header>
+    <div id="controls">
+        <select id="resolution" class="btn btn-secondary">
+            <option value="10">10m per pixel</option>
+            <option value="20">20m per pixel</option>
+            <option value="30">30m per pixel</option>
+        </select>
+        <select id="box-size" class="btn btn-secondary">
+            <option value="1024">1024x1024</option>
+            <option value="2048">2048x2048</option>
+            <option value="512">512x512</option>
+        </select>
+        <button id="download" class="btn btn-primary">Download CSV</button>
+    </div>
+    <div id="map-container">
+        <div id="map"></div>
+    </div>
+    <p id="credits">Credits: Othmane Echchabi ©</p>
+    <script>
+        var map = L.map('map').setView([37.5, -76.5], 5);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        var coordinates = [];
+
+        function calculateBounds(lat, lng, resolution, boxSize) {
+            var size = boxSize * resolution / 111320; // 111320 meters per degree of latitude
+            return [
+                [lat - size / 2, lng - size / 2], // Top left corner
+                [lat + size / 2, lng + size / 2]  // Bottom right corner
+            ];
+        }
+
+        map.on('click', function(e) {
+            var coords = e.latlng;
+            coordinates.push([coords.lat, coords.lng]);
+
+            // Add a marker at the clicked location
+            L.marker([coords.lat, coords.lng]).addTo(map);
+
+            // Get the selected resolution and box size
+            var resolution = document.getElementById('resolution').value;
+            var boxSize = document.getElementById('box-size').value;
+
+            // Define the bounds of the square based on the resolution and box size
+            var latLngBounds = calculateBounds(coords.lat, coords.lng, resolution, boxSize);
+
+            // Add a rectangle around the marker
+            L.rectangle(latLngBounds, {color: "#ff7800", weight: 1}).addTo(map);
+
+            console.log("Clicked at latitude: " + coords.lat + ", longitude: " + coords.lng);
+
+            // Send coordinates to the Flask server
+            fetch('/save_coords', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(coords)
+            })
+            .then(response => response.json())
+            .then(data => console.log("Coordinates saved: " + JSON.stringify(coords)))
+            .catch(error => console.error('Error:', error));
+        });
+
+        document.getElementById('download').addEventListener('click', function() {
+            var csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Latitude,Longitude\r\n"; // Add column names
+            coordinates.forEach(function(coordArray) {
+                let row = coordArray.join(",");
+                csvContent += row + "\r\n";
+            });
+
+            var encodedUri = encodeURI(csvContent);
+            var link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "coordinates.csv");
+            document.body.appendChild(link); // Required for FF
+
+            link.click();
+        });
+    </script>
+</body>
+</html>
