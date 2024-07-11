@@ -16,17 +16,19 @@
         header {
             background: #333;
             color: #fff;
-            padding: 8px;
-            padding-top: 15px;
+            padding: 8px 0;
             text-align: center;
+        }
+        h1 {
+            font-size: 20px;
         }
         #map-container {
             display: flex;
             justify-content: center;
-            height: calc(100vh - 200px); /* Adjusted for smaller title */
+            height: 60vh; /* Adjusted for smaller title */
         }
         #map {
-            height: 80%;
+            height: 100%;
             width: 80%;
             border: 2px solid #0f0e0e;
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
@@ -35,7 +37,7 @@
             text-align: center;
             margin-top: 20px;
         }
-        #download, #resolution, #box-size {
+        #download, #resolution, #box-size, #remove-tags, #remove-last-tag {
             display: inline-block;
             margin: 10px;
             margin-bottom: 20px;
@@ -48,7 +50,7 @@
             border-radius: 5px;
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
-        #download:hover, #resolution:hover, #box-size:hover {
+        #download:hover, #resolution:hover, #box-size:hover, #remove-tags:hover, #remove-last-tag:hover {
             background: #555;
         }
         #credits {
@@ -57,11 +59,32 @@
             font-size: 14px;
             color: #777;
         }
+        @media (max-width: 768px) {
+            #map {
+                width: 100%;
+                height: 50vh;
+            }
+            #map-container {
+                height: 90vh; /* Adjusted for smaller title */
+            }
+            #controls {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+            #controls select, #controls button {
+                width: 80%;
+                margin: 5px 0;
+            }
+            h1 {
+                font-size: 30px;
+            }
+        }
     </style>
 </head>
 <body>
     <header>
-        <h1 style="font-size: 20px;">Latitude and Longitude Coordinates Saver</h1>
+        <h1>Latitude and Longitude Coordinates Saver</h1>
     </header>
     <div id="controls">
         <select id="resolution" class="btn btn-secondary">
@@ -74,10 +97,14 @@
             <option value="2048">2048x2048</option>
             <option value="512">512x512</option>
         </select>
-        <button id="download" class="btn btn-primary">Download CSV</button>
     </div>
     <div id="map-container">
         <div id="map"></div>
+    </div>
+    <div id="controls">
+        <button id="remove-tags" class="btn btn-danger">Remove All Tags</button>
+        <button id="remove-last-tag" class="btn btn-warning">Remove Last Tag</button>
+        <button id="download" class="btn btn-primary">Download CSV</button>
     </div>
     <p id="credits">Credits: Othmane Echchabi ©</p>
     <script>
@@ -87,6 +114,8 @@
         }).addTo(map);
 
         var coordinates = [];
+        var markers = [];
+        var rectangles = [];
 
         function calculateBounds(lat, lng, resolution, boxSize) {
             var size = boxSize * resolution / 111320; // 111320 meters per degree of latitude
@@ -101,7 +130,8 @@
             coordinates.push([coords.lat, coords.lng]);
 
             // Add a marker at the clicked location
-            L.marker([coords.lat, coords.lng]).addTo(map);
+            var marker = L.marker([coords.lat, coords.lng]).addTo(map);
+            markers.push(marker);
 
             // Get the selected resolution and box size
             var resolution = document.getElementById('resolution').value;
@@ -111,7 +141,8 @@
             var latLngBounds = calculateBounds(coords.lat, coords.lng, resolution, boxSize);
 
             // Add a rectangle around the marker
-            L.rectangle(latLngBounds, {color: "#ff7800", weight: 1}).addTo(map);
+            var rectangle = L.rectangle(latLngBounds, {color: "#ff7800", weight: 1}).addTo(map);
+            rectangles.push(rectangle);
 
             console.log("Clicked at latitude: " + coords.lat + ", longitude: " + coords.lng);
 
@@ -143,6 +174,22 @@
             document.body.appendChild(link); // Required for FF
 
             link.click();
+        });
+
+        document.getElementById('remove-tags').addEventListener('click', function() {
+            markers.forEach(marker => map.removeLayer(marker));
+            rectangles.forEach(rectangle => map.removeLayer(rectangle));
+            markers = [];
+            rectangles = [];
+            coordinates = [];
+        });
+
+        document.getElementById('remove-last-tag').addEventListener('click', function() {
+            if (markers.length > 0) {
+                map.removeLayer(markers.pop());
+                map.removeLayer(rectangles.pop());
+                coordinates.pop();
+            }
         });
     </script>
 </body>
